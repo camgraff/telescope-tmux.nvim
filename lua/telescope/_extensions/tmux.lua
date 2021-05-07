@@ -16,7 +16,6 @@ end
 
 local sessions = function(opts)
     opts = opts or {}
-      --opts.entry_maker = opts.entry_maker or entry_maker_gen_from_active_sessions(opts)
 
     local results = get_tmux_sessions()
     -- FIXME: This command can display a session name even if you are in a seperate terminal session that isn't using tmux
@@ -34,7 +33,6 @@ local sessions = function(opts)
                     vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, {"Currently attached to this session."})
                 else
                     vim.api.nvim_buf_call(self.state.bufnr, function()
-                        -- atach to tmux session here
                         vim.fn.termopen(string.format("tmux attach -t %s", session_name))
                     end)
                 end
