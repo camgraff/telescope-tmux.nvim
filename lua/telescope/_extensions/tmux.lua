@@ -3,31 +3,40 @@ local utils = require('telescope.utils')
 local finders = require('telescope.finders')
 local pickers = require('telescope.pickers')
 local sorters = require('telescope.sorters')
-local make_entry = require('telescope.make_entry')
 local actions = require('telescope.actions')
 local action_state = require('telescope.actions.state')
 local previewers = require('telescope.previewers')
 
-local function get_tmux_sessions()
-    local sessions = utils.get_os_command_output({ 'tmux', 'list-sessions', '-F', '#{session_name}' })
+local function get_sessions(format)
+    return utils.get_os_command_output({ 'tmux', 'list-sessions', '-F', format })
+end
+
+local function get_tmux_windows(format)
+    local sessions = utils.get_os_command_output({ 'tmux', 'list-windows', '-F', format })
     return sessions
 end
 
 
 local sessions = function(opts)
-    opts = opts or {}
+    local session_names = get_sessions('#S')
+    local user_formatted_session_names = get_sessions(opts.format or '#S')
+    local formatted_to_real_session_map = {}
+    for i, v in ipairs(user_formatted_session_names) do
+        formatted_to_real_session_map[v] = session_names[i]
+    end
 
-    local results = get_tmux_sessions()
     -- FIXME: This command can display a session name even if you are in a seperate terminal session that isn't using tmux
     local current_session = utils.get_os_command_output({'tmux', 'display-message', '-p', '#S'})[1]
 
     pickers.new(opts, {
         prompt_title = 'Tmux Sessions',
-        finder = finders.new_table(results),
+        finder = finders.new_table {
+            results = user_formatted_session_names
+        },
         sorter = sorters.get_generic_fuzzy_sorter(),
         previewer = previewers.new_buffer_previewer({
             define_preview = function(self, entry, status)
-                local session_name = entry[1]
+                local session_name = formatted_to_real_session_map[entry[1]]
                 -- Can't attach to current session otherwise neovim will freak out
                 if current_session == session_name then
                     vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, {"Currently attached to this session."})
