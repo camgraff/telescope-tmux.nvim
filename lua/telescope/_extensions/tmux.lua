@@ -7,17 +7,83 @@ local actions = require('telescope.actions')
 local action_state = require('telescope.actions.state')
 local previewers = require('telescope.previewers')
 
+-- TODO: It is better to pass an opts table and allow any additional options for the command
 local function get_sessions(format)
     return utils.get_os_command_output({ 'tmux', 'list-sessions', '-F', format })
 end
 
-local function get_tmux_windows(format)
-    local sessions = utils.get_os_command_output({ 'tmux', 'list-windows', '-F', format })
+-- TODO: Passing entire opts may not be a good idea since -f can change what windows appear in the table
+local function get_windows(opts)
+    local sessions = utils.get_os_command_output({ 'tmux', 'list-windows', unpack(opts) })
     return sessions
+end
+
+-- Do this by linking windows
+local windows = function(opts)
+    -- Need a seperator so we can split the session and window name, so just choose a string that is unlikely to appear in either
+    --local sep = '@@@'
+    --local match_regex = string.format("([^(%s)]+)%s([^(%s)]+)", sep, sep ,sep)
+    --local session_and_windows = {}
+    --for _, v in pairs(get_windows({'-a', '-F', '#S@@@#W'})) do
+        --local session, window = v:match(match_regex)
+        --table.insert(session_and_windows, {session=session, window=window})
+    --end
+    local window_ids = get_windows({"-a", '-F', '#{window_id}'})
+    local windows_with_user_opts = get_windows({"-a", '-F', '#S: #W'})
+
+    local custom_to_default_map = {}
+    for i, v in ipairs(windows_with_user_opts) do
+        custom_to_default_map[v] = window_ids[i]
+    end
+
+    -- FIXME: This command can display a session name even if you are in a seperate terminal session that isn't using tmux
+    local current_window = utils.get_os_command_output({'tmux', 'display-message', '-p', '#{window_id}'})[1]
+    local dummy_session_name = "telescope-tmux-previewer"
+
+    pickers.new(opts, {
+        prompt_title = 'Tmux Windows',
+        finder = finders.new_table {
+            results = windows_with_user_opts
+        },
+        sorter = sorters.get_generic_fuzzy_sorter(),
+        previewer = previewers.new_buffer_previewer({
+            setup = function(self)
+                vim.api.nvim_command(string.format("!tmux new-session -s %s -d", dummy_session_name))
+                return {}
+            end,
+            define_preview = function(self, entry, status)
+                local window_id = custom_to_default_map[entry[1]]
+                -- Can't attach to current session otherwise neovim will freak out
+                if current_window == window_id then
+                    vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, {"Currently attached to this session."})
+                else
+                    vim.api.nvim_buf_call(self.state.bufnr, function()
+                        -- Not working, but for some reason I can't link the window outside of the session. Unsure...
+                        -- Maybe have to use tmux send keys to link the windows inside the session
+                        -- EDIT: It was because I was trying to relink a window that was already linked. Linking DOES work outside
+                        -- of the tmux session. Can just link the window before attaching and that should be good.
+                        vim.api.nvim_command(string.format("silent exec '!tmux link-window -s %s -t %s:0 -k'", window_id, dummy_session_name))
+                        vim.fn.termopen(string.format("tmux attach -t %s", dummy_session_name))
+                    end)
+                end
+            end
+        }),
+        attach_mappings = function(prompt_bufnr)
+            actions.select_default:replace(function()
+                local selection = action_state.get_selected_entry()
+                actions.close(prompt_bufnr)
+                vim.api.nvim_command(string.format("silent !tmux kill-session -t %s", dummy_session_name))
+                vim.api.nvim_command('silent !tmux switchc -t ' .. custom_to_default_map[selection.value])
+            end)
+
+            return true
+        end,
+    }):find()
 end
 
 
 local sessions = function(opts)
+    -- TODO: Use session IDs instead of names
     local session_names = get_sessions('#S')
     local user_formatted_session_names = get_sessions(opts.format or '#S')
     local formatted_to_real_session_map = {}
@@ -61,6 +127,7 @@ end
 
 return telescope.register_extension {
     exports = {
-        sessions = sessions
+        sessions = sessions,
+        windows = windows
     }
 }
