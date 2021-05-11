@@ -20,15 +20,8 @@ end
 
 -- Do this by linking windows
 local windows = function(opts)
-    -- Need a seperator so we can split the session and window name, so just choose a string that is unlikely to appear in either
-    --local sep = '@@@'
-    --local match_regex = string.format("([^(%s)]+)%s([^(%s)]+)", sep, sep ,sep)
-    --local session_and_windows = {}
-    --for _, v in pairs(get_windows({'-a', '-F', '#S@@@#W'})) do
-        --local session, window = v:match(match_regex)
-        --table.insert(session_and_windows, {session=session, window=window})
-    --end
     local window_ids = get_windows({"-a", '-F', '#{window_id}'})
+    -- TODO: These should be able to be passed by the user
     local windows_with_user_opts = get_windows({"-a", '-F', '#S: #W'})
 
     local custom_to_default_map = {}
@@ -58,32 +51,24 @@ local windows = function(opts)
                     vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, {"Currently attached to this session."})
                 else
                     vim.api.nvim_buf_call(self.state.bufnr, function()
-                        -- Not working, but for some reason I can't link the window outside of the session. Unsure...
-                        -- Maybe have to use tmux send keys to link the windows inside the session
-                        -- EDIT: It was because I was trying to relink a window that was already linked. Linking DOES work outside
-                        -- of the tmux session. Can just link the window before attaching and that should be good.
-                        --vim.api.nvim_command(string.format("silent !tmux link-window -s %s -t %s:0 -k", window_id, dummy_session_name))
                         utils.get_os_command_output({"tmux", "link-window", "-s", window_id, "-t", dummy_session_name .. ":0", "-k"})
                         -- Need -r here to prevent resizing the window to fix in the preview buffer
                         vim.fn.termopen(string.format("tmux attach -t %s -r", dummy_session_name))
                     end)
                 end
+            end,
+            teardown = function(self)
+                vim.api.nvim_command(string.format("silent !tmux kill-session -t %s", dummy_session_name))
             end
         }),
         attach_mappings = function(prompt_bufnr)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
                 actions.close(prompt_bufnr)
-                -- we have to kill the dummy session here because teardown doesn't get called after the client switches
-                vim.api.nvim_command(string.format("silent !tmux kill-session -t %s", dummy_session_name))
                 vim.api.nvim_command('silent !tmux switchc -t ' .. custom_to_default_map[selection.value])
             end)
 
             return true
-        end,
-        teardown = function(self)
-            print("teardown called")
-            vim.api.nvim_command(string.format("!tmux kill-session -t %s", dummy_session_name))
         end
     }):find()
 end
