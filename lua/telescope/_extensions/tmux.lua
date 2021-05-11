@@ -62,8 +62,10 @@ local windows = function(opts)
                         -- Maybe have to use tmux send keys to link the windows inside the session
                         -- EDIT: It was because I was trying to relink a window that was already linked. Linking DOES work outside
                         -- of the tmux session. Can just link the window before attaching and that should be good.
-                        vim.api.nvim_command(string.format("silent exec '!tmux link-window -s %s -t %s:0 -k'", window_id, dummy_session_name))
-                        vim.fn.termopen(string.format("tmux attach -t %s", dummy_session_name))
+                        --vim.api.nvim_command(string.format("silent !tmux link-window -s %s -t %s:0 -k", window_id, dummy_session_name))
+                        utils.get_os_command_output({"tmux", "link-window", "-s", window_id, "-t", dummy_session_name .. ":0", "-k"})
+                        -- Need -r here to prevent resizing the window to fix in the preview buffer
+                        vim.fn.termopen(string.format("tmux attach -t %s -r", dummy_session_name))
                     end)
                 end
             end
@@ -72,12 +74,17 @@ local windows = function(opts)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
                 actions.close(prompt_bufnr)
+                -- we have to kill the dummy session here because teardown doesn't get called after the client switches
                 vim.api.nvim_command(string.format("silent !tmux kill-session -t %s", dummy_session_name))
                 vim.api.nvim_command('silent !tmux switchc -t ' .. custom_to_default_map[selection.value])
             end)
 
             return true
         end,
+        teardown = function(self)
+            print("teardown called")
+            vim.api.nvim_command(string.format("!tmux kill-session -t %s", dummy_session_name))
+        end
     }):find()
 end
 
@@ -108,7 +115,7 @@ local sessions = function(opts)
                     vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, {"Currently attached to this session."})
                 else
                     vim.api.nvim_buf_call(self.state.bufnr, function()
-                        vim.fn.termopen(string.format("tmux attach -t %s", session_name))
+                        vim.fn.termopen(string.format("tmux attach -t %s -r", session_name))
                     end)
                 end
             end
