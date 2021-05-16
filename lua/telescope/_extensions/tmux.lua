@@ -81,9 +81,15 @@ local pane_contents = function(opts)
         attach_mappings = function(prompt_bufnr)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
+                local pane = selection.value.pane
+                local line_num = selection.value.line_num
                 actions.close(prompt_bufnr)
+                vim.api.nvim_command("silent !tmux copy-mode -t \\" .. pane)
+                vim.api.nvim_command(string.format('silent !tmux send-keys -t \\%s -X history-top', pane))
+                vim.api.nvim_command(string.format('silent !tmux send-keys -t \\%s -X -N %s cursor-down', pane, line_num-1))
+                vim.api.nvim_command(string.format('silent !tmux send-keys -t \\%s -X select-line', pane))
                 -- pane IDs start with % so have to escape it
-                vim.api.nvim_command('silent !tmux switchc -t \\' .. selection.value)
+                vim.api.nvim_command('silent !tmux switchc -t \\' .. pane)
             end)
 
             return true
@@ -136,7 +142,6 @@ local windows = function(opts)
         attach_mappings = function(prompt_bufnr)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
-                print(vim.inspect(selection))
                 actions.close(prompt_bufnr)
                 vim.api.nvim_command('silent !tmux switchc -t ' .. custom_to_default_map[selection.value])
             end)
@@ -182,7 +187,7 @@ local sessions = function(opts)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
                 actions.close(prompt_bufnr)
-                vim.api.nvim_command('silent !tmux switchc -t ' .. selection.value)
+                vim.api.nvim_command('silent !tmux switchc -t ' .. selection.valu)
             end)
 
             return true
