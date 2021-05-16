@@ -18,7 +18,79 @@ local function get_windows(opts)
     return sessions
 end
 
--- Do this by linking windows
+local ns_previewer = vim.api.nvim_create_namespace('telescope-tmux.previewers')
+
+local pane_contents = function(opts)
+    local panes = utils.get_os_command_output({'tmux', 'list-panes', '-a', '-F', '#{pane_id}'})
+    local current_pane = utils.get_os_command_output({'tmux', 'display-message', '-p', '\\#{pane_id}'})[1]
+    local num_history_lines = opts.max_history_lines or 10000
+    local results = {}
+    for _, pane in ipairs(panes) do
+        local contents = utils.get_os_command_output({'tmux', 'capture-pane', '-pJ', '-t', pane, '-S', -num_history_lines})
+        for i, line in ipairs(contents) do
+            table.insert(results, {pane=pane, line=line, line_num=i})
+        end
+    end
+
+    pickers.new(opts, {
+        prompt_title = 'Tmux Pane Contents',
+        finder = finders.new_table {
+            results = results,
+            entry_maker = function(result)
+                return {
+                    value = {
+                        pane = result.pane,
+                        line_num = result.line_num,
+                    },
+                    display = result.pane .. ": " .. result.line,
+                    ordinal = result.line,
+                    valid = result.pane ~= current_pane
+                }
+            end
+        },
+        sorter = sorters.get_generic_fuzzy_sorter(),
+        -- would prefer to use this when https://github.com/neovim/neovim/issues/14557 is fixed.
+        --previewer = previewers.new_buffer_previewer({
+            --define_preview = function(self, entry, status)
+                --local pane = entry.value.pane
+                --local line_num = entry.value.line_num
+                --local pane_content = utils.get_os_command_output({'tmux', 'capture-pane', '-p', '-t', pane, '-S', -num_history_lines, '-eJ'})
+                --local chan_id = vim.api.nvim_open_term(self.state.bufnr, {})
+                --vim.fn.chansend(chan_id, pane_content)
+            --end
+        --}),
+        previewer = previewers.new_buffer_previewer({
+            define_preview = function(self, entry, status)
+                local pane = entry.value.pane
+                local line_num = entry.value.line_num
+                vim.api.nvim_buf_call(self.state.bufnr, function()
+                    local win_id = self.state.winid
+                    -- TODO: cache the buffer so we don't recreate buffers when pane_id is the same
+                    -- set wrap for the terminal output
+                    vim.api.nvim_win_set_option(win_id, "wrap", true)
+                    local job_id = vim.fn.termopen(string.format("tmux capture-pane -t \\%s -S %s -eJp", pane, -num_history_lines))
+                    -- have to wait for the terminal job to complete before adding highlight
+                    vim.fn.jobwait({job_id})
+                    pcall(vim.api.nvim_win_set_cursor, win_id, {line_num, 0})
+                    vim.cmd("norm! zz")
+                    -- TODO: Have noticed some times where highlight is not getting applied, maybe some issue with line numbers
+                    vim.api.nvim_buf_add_highlight(self.state.bufnr, ns_previewer, "TelescopePreviewLine", line_num, 0, -1)
+                end)
+            end,
+        }),
+        attach_mappings = function(prompt_bufnr)
+            actions.select_default:replace(function()
+                local selection = action_state.get_selected_entry()
+                actions.close(prompt_bufnr)
+                -- pane IDs start with % so have to escape it
+                vim.api.nvim_command('silent !tmux switchc -t \\' .. selection.value)
+            end)
+
+            return true
+        end
+    }):find()
+end
+
 local windows = function(opts)
     local window_ids = get_windows({"-a", '-F', '#{window_id}'})
     -- TODO: These should be able to be passed by the user
@@ -64,6 +136,7 @@ local windows = function(opts)
         attach_mappings = function(prompt_bufnr)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
+                print(vim.inspect(selection))
                 actions.close(prompt_bufnr)
                 vim.api.nvim_command('silent !tmux switchc -t ' .. custom_to_default_map[selection.value])
             end)
@@ -120,6 +193,7 @@ end
 return telescope.register_extension {
     exports = {
         sessions = sessions,
-        windows = windows
+        windows = windows,
+        pane_contents = pane_contents
     }
 }
