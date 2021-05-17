@@ -126,7 +126,7 @@ local windows = function(opts)
                 local window_id = custom_to_default_map[entry[1]]
                 -- Can't attach to current session otherwise neovim will freak out
                 if current_window == window_id then
-                    vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, {"Currently attached to this session."})
+                    vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, {"Currently attached to this window."})
                 else
                     vim.api.nvim_buf_call(self.state.bufnr, function()
                         utils.get_os_command_output({"tmux", "link-window", "-s", window_id, "-t", dummy_session_name .. ":0", "-k"})
