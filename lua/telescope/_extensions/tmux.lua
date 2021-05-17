@@ -187,7 +187,7 @@ local sessions = function(opts)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
                 actions.close(prompt_bufnr)
-                vim.api.nvim_command('silent !tmux switchc -t ' .. selection.valu)
+                vim.api.nvim_command('silent !tmux switchc -t ' .. selection.value)
             end)
 
             return true
