@@ -144,6 +144,9 @@ local windows = function(opts)
                 local selection = action_state.get_selected_entry()
                 actions.close(prompt_bufnr)
                 vim.api.nvim_command('silent !tmux switchc -t ' .. custom_to_default_map[selection.value])
+                if opts.quit_on_select then
+                    vim.api.nvim_command('q!')
+                end
             end)
 
             return true
@@ -188,6 +191,9 @@ local sessions = function(opts)
                 local selection = action_state.get_selected_entry()
                 actions.close(prompt_bufnr)
                 vim.api.nvim_command('silent !tmux switchc -t ' .. selection.value)
+                if opts.quit_on_select then
+                    vim.api.nvim_command('q!')
+                end
             end)
 
             return true
