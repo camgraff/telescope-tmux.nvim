@@ -111,15 +111,17 @@ local windows = function(opts)
     local current_window = utils.get_os_command_output({'tmux', 'display-message', '-p', '#{window_id}'})[1]
     local dummy_session_name = "telescope-tmux-previewer"
 
+    local current_client = utils.get_os_command_output({'tmux', 'display-message', '-p', '#{client_tty}'})[1]
+
     pickers.new(opts, {
         prompt_title = 'Tmux Windows',
         finder = finders.new_table {
-            results = windows_with_user_opts
+            results = windows_with_user_opts,
         },
         sorter = sorters.get_generic_fuzzy_sorter(),
         previewer = previewers.new_buffer_previewer({
             setup = function(self)
-                vim.api.nvim_command(string.format("!tmux new-session -s %s -d", dummy_session_name))
+                vim.api.nvim_command(string.format("silent !tmux new-session -s %s -d", dummy_session_name))
                 return {}
             end,
             define_preview = function(self, entry, status)
@@ -129,7 +131,7 @@ local windows = function(opts)
                     vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, {"Currently attached to this window."})
                 else
                     vim.api.nvim_buf_call(self.state.bufnr, function()
-                        utils.get_os_command_output({"tmux", "link-window", "-s", window_id, "-t", dummy_session_name .. ":0", "-k"})
+                        vim.cmd(string.format("silent !tmux link-window -s %s -t %s:0 -kd", window_id, dummy_session_name))
                         -- Need -r here to prevent resizing the window to fix in the preview buffer
                         vim.fn.termopen(string.format("tmux attach -t %s -r", dummy_session_name))
                     end)
@@ -142,13 +144,20 @@ local windows = function(opts)
         attach_mappings = function(prompt_bufnr)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
+                local selected_window_id = custom_to_default_map[selection.value]
+                -- If we don't unlink the window before switching the client, the session will detach if the
+                -- selected window is in the current session. I don't know why.
+                vim.cmd('silent !tmux unlink-window -t ' .. selected_window_id)
+                vim.cmd(string.format('silent !tmux switchc -t %s -c %s', selected_window_id, current_client))
                 actions.close(prompt_bufnr)
-                vim.api.nvim_command('silent !tmux switchc -t ' .. custom_to_default_map[selection.value])
-                if opts.quit_on_select then
-                    vim.api.nvim_command('q!')
-                end
             end)
-
+            actions.close:enhance({
+                post = function ()
+                    if opts.quit_on_select then
+                        vim.cmd('q!')
+                    end
+                end
+            })
             return true
         end
     }):find()
@@ -166,6 +175,7 @@ local sessions = function(opts)
 
     -- FIXME: This command can display a session name even if you are in a seperate terminal session that isn't using tmux
     local current_session = utils.get_os_command_output({'tmux', 'display-message', '-p', '#S'})[1]
+    local current_client = utils.get_os_command_output({'tmux', 'display-message', '-p', '#{client_tty}'})[1]
 
     pickers.new(opts, {
         prompt_title = 'Tmux Sessions',
@@ -189,12 +199,17 @@ local sessions = function(opts)
         attach_mappings = function(prompt_bufnr)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
+                vim.cmd(string.format('silent !tmux switchc -t %s -c %s', selection.value, current_client))
                 actions.close(prompt_bufnr)
-                vim.api.nvim_command('silent !tmux switchc -t ' .. selection.value)
-                if opts.quit_on_select then
-                    vim.api.nvim_command('q!')
-                end
             end)
+
+            actions.close:enhance({
+                post = function ()
+                    if opts.quit_on_select then
+                        vim.cmd('q!')
+                    end
+                end
+            })
 
             return true
         end,
