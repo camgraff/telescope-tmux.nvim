@@ -98,7 +98,10 @@ local pane_contents = function(opts)
 end
 
 local windows = function(opts)
-    local window_ids = get_windows({"-a", '-F', '#{window_id}'})
+    -- We have to include the session here since we show the preview by linking a window.
+    -- If we attempt to attach using solely the window id, it is ambiguous because the window is linked
+    -- between the real session and the dummy session used for previewing.
+    local window_ids = get_windows({"-a", '-F', '#S:#{window_id}'})
     -- TODO: These should be able to be passed by the user
     local windows_with_user_opts = get_windows({"-a", '-F', '#S: #W'})
 
@@ -108,7 +111,7 @@ local windows = function(opts)
     end
 
     -- FIXME: This command can display a session name even if you are in a seperate terminal session that isn't using tmux
-    local current_window = utils.get_os_command_output({'tmux', 'display-message', '-p', '#{window_id}'})[1]
+    local current_window = utils.get_os_command_output({'tmux', 'display-message', '-p', '#S:#{window_id}'})[1]
     local dummy_session_name = "telescope-tmux-previewer"
 
     local current_client = utils.get_os_command_output({'tmux', 'display-message', '-p', '#{client_tty}'})[1]
@@ -133,7 +136,7 @@ local windows = function(opts)
                     vim.api.nvim_buf_call(self.state.bufnr, function()
                         vim.cmd(string.format("silent !tmux link-window -s %s -t %s:0 -kd", window_id, dummy_session_name))
                         -- Need -r here to prevent resizing the window to fix in the preview buffer
-                        vim.fn.termopen(string.format("tmux attach -t %s -r", dummy_session_name))
+                        vim.fn.termopen(string.format("tmux attach -t %s -rd", dummy_session_name))
                     end)
                 end
             end,
@@ -145,16 +148,13 @@ local windows = function(opts)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
                 local selected_window_id = custom_to_default_map[selection.value]
-                -- If we don't unlink the window before switching the client, the session will detach if the
-                -- selected window is in the current session. I don't know why.
-                vim.cmd('silent !tmux unlink-window -t ' .. selected_window_id)
                 vim.cmd(string.format('silent !tmux switchc -t %s -c %s', selected_window_id, current_client))
                 actions.close(prompt_bufnr)
             end)
             actions.close:enhance({
                 post = function ()
                     if opts.quit_on_select then
-                        vim.cmd('q!')
+                        vim.cmd('q')
                     end
                 end
             })
