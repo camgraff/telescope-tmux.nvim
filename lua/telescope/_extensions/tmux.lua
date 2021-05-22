@@ -120,6 +120,14 @@ local windows = function(opts)
         prompt_title = 'Tmux Windows',
         finder = finders.new_table {
             results = windows_with_user_opts,
+            entry_maker = function(result)
+                return {
+                    value = result,
+                    display = result,
+                    ordinal = result,
+                    valid = custom_to_default_map[result] ~=  current_window
+                }
+            end
         },
         sorter = sorters.get_generic_fuzzy_sorter(),
         previewer = previewers.new_buffer_previewer({
@@ -128,17 +136,18 @@ local windows = function(opts)
                 return {}
             end,
             define_preview = function(self, entry, status)
-                local window_id = custom_to_default_map[entry[1]]
-                -- Can't attach to current session otherwise neovim will freak out
-                if current_window == window_id then
-                    vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, {"Currently attached to this window."})
-                else
-                    vim.api.nvim_buf_call(self.state.bufnr, function()
-                        vim.cmd(string.format("silent !tmux link-window -s %s -t %s:0 -kd", window_id, dummy_session_name))
-                        -- Need -r here to prevent resizing the window to fix in the preview buffer
-                        vim.fn.termopen(string.format("tmux attach -t %s -rd", dummy_session_name))
-                    end)
-                end
+                -- We have to set the window buf manually to avoid a race condition where we try to attach to
+                -- the tmux sessions before the buffer has been set in the window. This is because Telescope
+                -- calls nvim_win_set_buf inside vim.schedule()
+                vim.api.nvim_win_set_buf(self.state.winid, self.state.bufnr)
+                local window_id = custom_to_default_map[entry.value]
+                vim.api.nvim_buf_call(self.state.bufnr, function()
+                    -- kil the job running in previous previewer
+                    if utils.job_is_running(self.state.termopen_id) then vim.fn.jobstop(self.state.termopen_id) end
+                    vim.cmd(string.format("silent !tmux link-window -s %s -t %s:0 -kd", window_id, dummy_session_name))
+                    -- Need -r here to prevent resizing the window which will distort the view on the real client
+                    self.state.termopen_id = vim.fn.termopen(string.format("tmux attach -t %s -r", dummy_session_name))
+                end)
             end,
             teardown = function(self)
                 vim.api.nvim_command(string.format("silent !tmux kill-session -t %s", dummy_session_name))
