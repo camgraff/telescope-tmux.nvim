@@ -180,22 +180,37 @@ local sessions = function(opts)
     pickers.new(opts, {
         prompt_title = 'Tmux Sessions',
         finder = finders.new_table {
-            results = user_formatted_session_names
+            results = user_formatted_session_names,
+            entry_maker = function(result)
+                return {
+                    value = result,
+                    display = result,
+                    ordinal = result,
+                    valid = formatted_to_real_session_map[result] ~=  current_session
+                }
+            end
         },
         sorter = sorters.get_generic_fuzzy_sorter(),
-        previewer = previewers.new_buffer_previewer({
-            define_preview = function(self, entry, status)
-                local session_name = formatted_to_real_session_map[entry[1]]
-                -- Can't attach to current session otherwise neovim will freak out
-                if current_session == session_name then
-                    vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, {"Currently attached to this session."})
-                else
-                    vim.api.nvim_buf_call(self.state.bufnr, function()
-                        vim.fn.termopen(string.format("tmux attach -t %s -r", session_name))
-                    end)
-                end
+        previewer = previewers.new_termopen_previewer({
+            get_command = function(entry, status)
+                local session_name = formatted_to_real_session_map[entry.value]
+                return {'tmux', 'attach-session', '-t', session_name, '-r'}
             end
         }),
+        --previewer = previewers.new_buffer_previewer({
+            --define_preview = function(self, entry, status)
+                --print(vim.inspect(self.state.winid))
+                --local session_name = formatted_to_real_session_map[entry[1]]
+                ---- Can't attach to current session otherwise neovim will freak out
+                --if current_session == session_name then
+                    --vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, {"Currently attached to this session."})
+                --else
+                    --vim.api.nvim_buf_call(self.state.bufnr, function()
+                        --vim.fn.termopen(string.format("tmux attach -t %s -r", session_name))
+                    --end)
+                --end
+            --end
+        --}),
         attach_mappings = function(prompt_bufnr)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
