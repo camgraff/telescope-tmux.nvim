@@ -6,6 +6,7 @@ local sorters = require('telescope.sorters')
 local actions = require('telescope.actions')
 local action_state = require('telescope.actions.state')
 local previewers = require('telescope.previewers')
+local transform_mod = require('telescope.actions.mt').transform_mod
 
 -- TODO: It is better to pass an opts table and allow any additional options for the command
 local function get_sessions(format)
@@ -186,6 +187,16 @@ local sessions = function(opts)
     local current_session = utils.get_os_command_output({'tmux', 'display-message', '-p', '#S'})[1]
     local current_client = utils.get_os_command_output({'tmux', 'display-message', '-p', '#{client_tty}'})[1]
 
+    local custom_actions = transform_mod({
+        create_new_session = function(prompt_bufnr)
+            local new_session = action_state.get_current_line()
+            vim.cmd(string.format("silent !tmux new-session -d -s '%s'", new_session))
+            vim.cmd(string.format("silent !tmux switchc -t '%s' -c %s", new_session, current_client))
+            actions.close(prompt_bufnr)
+        end
+    })
+
+
     pickers.new(opts, {
         prompt_title = 'Tmux Sessions',
         finder = finders.new_table {
@@ -220,7 +231,7 @@ local sessions = function(opts)
                 --end
             --end
         --}),
-        attach_mappings = function(prompt_bufnr)
+        attach_mappings = function(prompt_bufnr, map)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
                 vim.cmd(string.format('silent !tmux switchc -t %s -c %s', selection.value, current_client))
@@ -234,6 +245,9 @@ local sessions = function(opts)
                     end
                 end
             })
+
+            map('i', '<c-a>', custom_actions.create_new_session)
+            map('n', '<c-a>', custom_actions.create_new_session)
 
             return true
         end,
