@@ -17,12 +17,12 @@ Fuzzy find over tmux targets.
 
 ### Windows
 ```
-Telescope tmux windows
+:Telescope tmux windows
 ```
 
 ### Pane Contents
 ```
-Telescope tmux pane_contents
+:Telescope tmux pane_contents
 ```
 
 ## Use with tmux display-popup
