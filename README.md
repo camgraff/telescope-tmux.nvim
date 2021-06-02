@@ -1,6 +1,6 @@
 # Telescope-tmux.nvim
 
-Fuzzy find over tmux targets.
+A Telescope.nvim extension for fuzzy-finding over tmux targets.
 
 ## Prerequisites
 
