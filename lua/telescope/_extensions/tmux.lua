@@ -7,6 +7,7 @@ local actions = require('telescope.actions')
 local action_state = require('telescope.actions.state')
 local previewers = require('telescope.previewers')
 local transform_mod = require('telescope.actions.mt').transform_mod
+local window = require "telescope.pickers.window"
 
 -- TODO: It is better to pass an opts table and allow any additional options for the command
 local function get_sessions(format)
@@ -133,10 +134,12 @@ local windows = function(opts)
         sorter = sorters.get_generic_fuzzy_sorter(),
         previewer = previewers.new_buffer_previewer({
             setup = function(self)
+                print("setup called")
                 vim.api.nvim_command(string.format("silent !tmux new-session -s %s -d", dummy_session_name))
                 return {}
             end,
             define_preview = function(self, entry, status)
+                print("HELLO")
                 -- We have to set the window buf manually to avoid a race condition where we try to attach to
                 -- the tmux sessions before the buffer has been set in the window. This is because Telescope
                 -- calls nvim_win_set_buf inside vim.schedule()
@@ -156,9 +159,12 @@ local windows = function(opts)
         }),
         attach_mappings = function(prompt_bufnr)
             actions.select_default:replace(function()
+                opts.some_func()
+                print("HIT")
                 local selection = action_state.get_selected_entry()
+                print(selection)
                 local selected_window_id = custom_to_default_map[selection.value]
-                vim.cmd(string.format('silent !tmux switchc -t %s -c %s', selected_window_id, current_client))
+                --vim.cmd(string.format('silent !tmux switchc -t %s -c %s', selected_window_id, current_client))
                 actions.close(prompt_bufnr)
             end)
             actions.close:enhance({
@@ -175,6 +181,9 @@ end
 
 
 local sessions = function(opts)
+    opts.on_complete = {function()
+        print("COMPLETE")
+    end}
     -- TODO: Use session IDs instead of names
     local session_names = get_sessions('#S')
     local user_formatted_session_names = get_sessions(opts.format or '#S')
