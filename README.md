@@ -2,6 +2,8 @@
 
 A Telescope.nvim extension for fuzzy-finding over tmux targets.
 
+![demo](https://i.imgur.com/WvSXmaI.gif)
+
 ## Prerequisites
 
 - [Neovim nightly](https://github.com/neovim/neovim/releases/tag/nightly)
