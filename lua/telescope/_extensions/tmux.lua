@@ -123,6 +123,7 @@ local windows = function(opts)
         finder = finders.new_table {
             results = windows_with_user_opts,
             entry_maker = function(result)
+                print("MADE AN ENTRY")
                 return {
                     value = result,
                     display = result,
@@ -134,12 +135,11 @@ local windows = function(opts)
         sorter = sorters.get_generic_fuzzy_sorter(),
         previewer = previewers.new_buffer_previewer({
             setup = function(self)
-                print("setup called")
                 vim.api.nvim_command(string.format("silent !tmux new-session -s %s -d", dummy_session_name))
                 return {}
             end,
             define_preview = function(self, entry, status)
-                print("HELLO")
+                print("DEFINING PREVIEW")
                 -- We have to set the window buf manually to avoid a race condition where we try to attach to
                 -- the tmux sessions before the buffer has been set in the window. This is because Telescope
                 -- calls nvim_win_set_buf inside vim.schedule()
@@ -159,12 +159,12 @@ local windows = function(opts)
         }),
         attach_mappings = function(prompt_bufnr)
             actions.select_default:replace(function()
+                print("DID SOMETHING")
                 opts.some_func()
-                print("HIT")
                 local selection = action_state.get_selected_entry()
                 print(selection)
                 local selected_window_id = custom_to_default_map[selection.value]
-                --vim.cmd(string.format('silent !tmux switchc -t %s -c %s', selected_window_id, current_client))
+                vim.cmd(string.format('silent !tmux switchc -t %s -c %s', selected_window_id, current_client))
                 actions.close(prompt_bufnr)
             end)
             actions.close:enhance({
