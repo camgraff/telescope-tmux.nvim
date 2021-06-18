@@ -7,7 +7,6 @@ local actions = require('telescope.actions')
 local action_state = require('telescope.actions.state')
 local previewers = require('telescope.previewers')
 local transform_mod = require('telescope.actions.mt').transform_mod
-local functional = require "plenary.functional"
 
 -- TODO: It is better to pass an opts table and allow any additional options for the command
 local function get_sessions(format)
@@ -21,6 +20,35 @@ local function get_windows(opts)
 end
 
 local ns_previewer = vim.api.nvim_create_namespace('telescope-tmux.previewers')
+
+display_pane_content_preview = function(entry, winid, bufid, buf_cache, num_history_lines)
+    local pane = entry.value.pane
+    local line_num = entry.value.line_num
+    -- TODO: can we avoid this call and reuse the original capture-pane output?
+    local pane_content = utils.get_os_command_output({'tmux', 'capture-pane', '-p', '-t', pane, '-S', -num_history_lines, '-e'})
+
+    if buf_cache[pane] == nil then
+        local chan_id = vim.api.nvim_open_term(bufid, {})
+        for i, line in ipairs(pane_content)  do
+            pane_content[i] = line .. "\r"
+        end
+        -- I don't know why, but need this in order to the lines to be at the correct position in the buffer
+        vim.fn.chansend(chan_id, "\r\n")
+
+        vim.fn.chansend(chan_id, pane_content)
+        vim.fn.chanclose(chan_id)
+        -- Not sure if this is helpful/necessary?
+        vim.fn.jobwait({chan_id})
+        buf_cache[pane] = bufid
+    end
+
+    --vim.api.nvim_win_set_option(win_id, "wrap", false)
+    vim.api.nvim_buf_clear_namespace(bufid, ns_previewer, 0, -1)
+    vim.api.nvim_win_set_cursor(winid, {line_num, 0})
+    vim.api.nvim_win_set_buf(winid, bufid)
+    vim.cmd("norm! zz")
+    vim.api.nvim_buf_add_highlight(bufid, ns_previewer, "TelescopePreviewLine", line_num, 0, -1)
+end
 
 local pane_contents = function(opts)
     local panes = utils.get_os_command_output({'tmux', 'list-panes', '-a', '-F', '#{pane_id}'})
@@ -57,31 +85,7 @@ local pane_contents = function(opts)
         -- would prefer to use this when https://github.com/neovim/neovim/issues/14557 is fixed.
         previewer = previewers.new_buffer_previewer({
             define_preview = function(self, entry, status)
-                local pane = entry.value.pane
-                local line_num = entry.value.line_num
-                -- TODO: can we avoid this call and reuse the original capture-pane output?
-                local pane_content = utils.get_os_command_output({'tmux', 'capture-pane', '-p', '-t', pane, '-S', -num_history_lines, '-e'})
-                local win_id = self.state.winid
-
-                if buf_cache[pane] == nil then
-                    local chan_id = vim.api.nvim_open_term(self.state.bufnr, {})
-                    for i, line in ipairs(pane_content)  do
-                        pane_content[i] = line .. "\r"
-                    end
-                    -- I don't know why, but need this in order to the lines to be at the correct position in the buffer
-                    vim.fn.chansend(chan_id, "\r\n")
-
-                    vim.fn.chansend(chan_id, pane_content)
-                    vim.fn.chanclose(chan_id)
-                    buf_cache[pane] = self.state.bufnr
-                end
-
-                --vim.api.nvim_win_set_option(win_id, "wrap", false)
-                vim.api.nvim_buf_clear_namespace(self.state.bufnr, ns_previewer, 0, -1)
-                vim.api.nvim_win_set_cursor(win_id, {line_num, 0})
-                vim.api.nvim_win_set_buf(self.state.winid, self.state.bufnr)
-                vim.cmd("norm! zz")
-                vim.api.nvim_buf_add_highlight(self.state.bufnr, ns_previewer, "TelescopePreviewLine", line_num, 0, -1)
+                display_pane_content_preview(entry, self.state.winid, self.state.bufnr, buf_cache, num_history_lines)
             end,
             get_buffer_by_name = function (self, entry)
                 return entry.value.pane
@@ -287,6 +291,6 @@ return telescope.register_extension {
         windows = windows,
         pane_contents = pane_contents,
         -- TODO: move this to another file
-        new_pane_contents_previewer = new_pane_contents_previewer
+        display_pane_content_preview = display_pane_content_preview
     }
 }
