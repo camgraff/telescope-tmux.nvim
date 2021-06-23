@@ -27,7 +27,33 @@ describe("pane_contents", function()
     vim.wait(100)
     local actual_line = vim.api.nvim_buf_get_lines(bufid, 1, 2, true)[1]
     assert.equals(line, actual_line)
+  end)
 
+  it("should correctly display tmux capture-pane output with escape codes", function()
+      local pane = "%1"
+      local line_num = 3
+      local line = "here is a line to display"
+      local entry = {
+        value = {
+            pane = pane,
+            line_num = line_num,
+        },
+        -- TODO: make the display prefix prettier
+        display = pane .. ":" .. line_num .. ": " .. line,
+        ordinal = line,
+        valid = true
+    }
+    local winid = vim.api.nvim_get_current_win()
+    local bufid = vim.api.nvim_get_current_buf()
+    local utils = mock(require('telescope.utils'), true)
+    --local lines = vim.fn.readfile("tmux_out")
+    local lines = vim.fn.readfile("test_out")
+    utils.get_os_command_output.returns(lines)
 
+    tmux.display_pane_content_preview(entry, winid, bufid, {}, 100)
+    vim.wait(100)
+    local actual_line = vim.api.nvim_buf_get_lines(bufid, 1, 2, true)[1]
+    local expected = "~                              │    issues https://github.com/syncthing/syncthing/issues/6252. Also some remnance here https://github.com/gsantner/markor/issues/954#issuecomment-700337136                \n"
+    assert.equals(expected, actual_line)
   end)
 end)
