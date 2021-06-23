@@ -25,7 +25,7 @@ display_pane_content_preview = function(entry, winid, bufid, buf_cache, num_hist
     local pane = entry.value.pane
     local line_num = entry.value.line_num
     -- TODO: can we avoid this call and reuse the original capture-pane output?
-    local pane_content = utils.get_os_command_output({'tmux', 'capture-pane', '-p', '-t', pane, '-S', -num_history_lines, '-e'})
+    local pane_content = utils.get_os_command_output({'tmux', 'capture-pane', '-p', '-t', pane, '-S', -num_history_lines, '-e', '-N'})
 
     if buf_cache[pane] == nil then
         local chan_id = vim.api.nvim_open_term(bufid, {})
