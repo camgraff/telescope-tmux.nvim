@@ -21,33 +21,24 @@ end
 
 local ns_previewer = vim.api.nvim_create_namespace('telescope-tmux.previewers')
 
+--TODO: Use the buf cache to avoid making additonal capture-pane calls
 display_pane_content_preview = function(entry, winid, bufid, buf_cache, num_history_lines)
     local pane = entry.value.pane
     local line_num = entry.value.line_num
     -- TODO: can we avoid this call and reuse the original capture-pane output?
-    local pane_content = utils.get_os_command_output({'tmux', 'capture-pane', '-p', '-t', pane, '-S', -num_history_lines, '-e', '-N'})
+    local pane_content = utils.get_os_command_output({'tmux', 'capture-pane', '-p', '-t', pane, '-S', -num_history_lines, '-e'})
+    vim.api.nvim_win_set_option(winid, "number", false)
+    vim.api.nvim_win_set_option(winid, "relativenumber", false)
+    vim.api.nvim_win_set_option(winid, "wrap", false)
+    vim.api.nvim_win_set_buf(winid, bufid)
 
-    if buf_cache[pane] == nil then
-        local chan_id = vim.api.nvim_open_term(bufid, {})
-        for i, line in ipairs(pane_content)  do
-            pane_content[i] = line .. "\r"
-        end
-        -- I don't know why, but need this in order to the lines to be at the correct position in the buffer
-        vim.fn.chansend(chan_id, "\r\n")
+    vim.api.nvim_buf_set_option(bufid, "filetype", "terminal")
+    vim.api.nvim_buf_set_lines(bufid, 0, -1, false, pane_content)
 
-        vim.fn.chansend(chan_id, pane_content)
-        vim.fn.chanclose(chan_id)
-        -- Not sure if this is helpful/necessary?
-        vim.fn.jobwait({chan_id})
-        buf_cache[pane] = bufid
-    end
-
-    --vim.api.nvim_win_set_option(win_id, "wrap", false)
     vim.api.nvim_buf_clear_namespace(bufid, ns_previewer, 0, -1)
     vim.api.nvim_win_set_cursor(winid, {line_num, 0})
-    vim.api.nvim_win_set_buf(winid, bufid)
     vim.cmd("norm! zz")
-    vim.api.nvim_buf_add_highlight(bufid, ns_previewer, "TelescopePreviewLine", line_num, 0, -1)
+    vim.api.nvim_buf_add_highlight(bufid, ns_previewer, "TelescopePreviewLine", line_num-1, 0, -1)
 end
 
 local pane_contents = function(opts)
