@@ -1,4 +1,0 @@
-~                              │  1 Figure out what is causing syncthing change drop issues. Configured versioning in syncthing to test. Noticing it consistently happens overnight. Seems like the same   
-~                              │    issues https://github.com/syncthing/syncthing/issues/6252. Also some remnance here https://github.com/gsantner/markor/issues/954#issuecomment-700337136                
-~                              │28  Add install instructions for +telescope-tmux                                                                                                                           
-~                              │  1 Fix bug with pane_contents line position +telescope-tmux                                                                                                               
