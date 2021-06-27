@@ -27,18 +27,19 @@ display_pane_content_preview = function(entry, winid, bufid, buf_cache, num_hist
     local line_num = entry.value.line_num
     -- TODO: can we avoid this call and reuse the original capture-pane output?
     local pane_content = utils.get_os_command_output({'tmux', 'capture-pane', '-p', '-t', pane, '-S', -num_history_lines, '-e'})
+    --local pane_content = {"one pane", "two pane", "three pane"}
     vim.api.nvim_win_set_option(winid, "number", false)
     vim.api.nvim_win_set_option(winid, "relativenumber", false)
     vim.api.nvim_win_set_option(winid, "wrap", false)
     vim.api.nvim_win_set_buf(winid, bufid)
 
+    -- TODO: check for nvim-terminal.lua and only include term escape codes if plugin is present
     vim.api.nvim_buf_set_option(bufid, "filetype", "terminal")
     vim.api.nvim_buf_set_lines(bufid, 0, -1, false, pane_content)
 
     vim.api.nvim_buf_clear_namespace(bufid, ns_previewer, 0, -1)
-    vim.api.nvim_win_set_cursor(winid, {line_num, 0})
-    vim.cmd("norm! zz")
     vim.api.nvim_buf_add_highlight(bufid, ns_previewer, "TelescopePreviewLine", line_num-1, 0, -1)
+    vim.api.nvim_win_set_cursor(winid, {line_num, 0})
 end
 
 local pane_contents = function(opts)
@@ -48,6 +49,7 @@ local pane_contents = function(opts)
     local results = {}
     for _, pane in ipairs(panes) do
         local contents = utils.get_os_command_output({'tmux', 'capture-pane', '-p', '-t', pane, '-S', -num_history_lines})
+        --local contents = {"one pane", "two pane", "three pane"}
         for i, line in ipairs(contents) do
             table.insert(results, {pane=pane, line=line, line_num=i})
         end
@@ -106,7 +108,7 @@ local pane_contents = function(opts)
                 local selection = action_state.get_selected_entry()
                 local pane = selection.value.pane
                 local line_num = selection.value.line_num
-                --actions.close(prompt_bufnr)
+                actions.close(prompt_bufnr)
                 vim.api.nvim_command("silent !tmux copy-mode -t \\" .. pane)
                 vim.api.nvim_command(string.format('silent !tmux send-keys -t \\%s -X history-top', pane))
                 vim.api.nvim_command(string.format('silent !tmux send-keys -t \\%s -X -N %s cursor-down', pane, line_num-1))

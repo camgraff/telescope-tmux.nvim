@@ -46,7 +46,7 @@ describe("pane_contents", function()
     local winid = vim.api.nvim_get_current_win()
     local bufid = vim.api.nvim_get_current_buf()
     local utils = mock(require('telescope.utils'), true)
-    --local lines = vim.fn.readfile("tmux_out")
+    -- TODO: change test file name and move to fixtures dir
     local lines = vim.fn.readfile("test_out")
     utils.get_os_command_output.returns(lines)
 
