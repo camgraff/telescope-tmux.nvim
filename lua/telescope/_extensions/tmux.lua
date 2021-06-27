@@ -8,6 +8,8 @@ local action_state = require('telescope.actions.state')
 local previewers = require('telescope.previewers')
 local transform_mod = require('telescope.actions.mt').transform_mod
 
+local pane_contents_cmd = require'telescope._extensions.tmux.pane_contents'
+
 -- TODO: It is better to pass an opts table and allow any additional options for the command
 local function get_sessions(format)
     return utils.get_os_command_output({ 'tmux', 'list-sessions', '-F', format })
@@ -17,29 +19,6 @@ end
 local function get_windows(opts)
     local sessions = utils.get_os_command_output({ 'tmux', 'list-windows', unpack(opts) })
     return sessions
-end
-
-local ns_previewer = vim.api.nvim_create_namespace('telescope-tmux.previewers')
-
---TODO: Use the buf cache to avoid making additonal capture-pane calls
-display_pane_content_preview = function(entry, winid, bufid, buf_cache, num_history_lines)
-    local pane = entry.value.pane
-    local line_num = entry.value.line_num
-    -- TODO: can we avoid this call and reuse the original capture-pane output?
-    local pane_content = utils.get_os_command_output({'tmux', 'capture-pane', '-p', '-t', pane, '-S', -num_history_lines, '-e'})
-    --local pane_content = {"one pane", "two pane", "three pane"}
-    vim.api.nvim_win_set_option(winid, "number", false)
-    vim.api.nvim_win_set_option(winid, "relativenumber", false)
-    vim.api.nvim_win_set_option(winid, "wrap", false)
-    vim.api.nvim_win_set_buf(winid, bufid)
-
-    -- TODO: check for nvim-terminal.lua and only include term escape codes if plugin is present
-    vim.api.nvim_buf_set_option(bufid, "filetype", "terminal")
-    vim.api.nvim_buf_set_lines(bufid, 0, -1, false, pane_content)
-
-    vim.api.nvim_buf_clear_namespace(bufid, ns_previewer, 0, -1)
-    vim.api.nvim_buf_add_highlight(bufid, ns_previewer, "TelescopePreviewLine", line_num-1, 0, -1)
-    vim.api.nvim_win_set_cursor(winid, {line_num, 0})
 end
 
 local pane_contents = function(opts)
@@ -54,8 +33,6 @@ local pane_contents = function(opts)
             table.insert(results, {pane=pane, line=line, line_num=i})
         end
     end
-
-    local buf_cache = {}
 
     pickers.new(opts, {
         prompt_title = 'Tmux Pane Contents',
@@ -78,7 +55,7 @@ local pane_contents = function(opts)
         -- would prefer to use this when https://github.com/neovim/neovim/issues/14557 is fixed.
         previewer = previewers.new_buffer_previewer({
             define_preview = function(self, entry, status)
-                display_pane_content_preview(entry, self.state.winid, self.state.bufnr, buf_cache, num_history_lines)
+                pane_contents_cmd.define_preview(entry, self.state.winid, self.state.bufnr, num_history_lines)
             end,
             get_buffer_by_name = function (self, entry)
                 return entry.value.pane
@@ -241,20 +218,6 @@ local sessions = function(opts)
                 return {'tmux', 'attach-session', '-t', session_name, '-r'}
             end
         }),
-        --previewer = previewers.new_buffer_previewer({
-            --define_preview = function(self, entry, status)
-                --print(vim.inspect(self.state.winid))
-                --local session_name = formatted_to_real_session_map[entry[1]]
-                ---- Can't attach to current session otherwise neovim will freak out
-                --if current_session == session_name then
-                    --vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, {"Currently attached to this session."})
-                --else
-                    --vim.api.nvim_buf_call(self.state.bufnr, function()
-                        --vim.fn.termopen(string.format("tmux attach -t %s -r", session_name))
-                    --end)
-                --end
-            --end
-        --}),
         attach_mappings = function(prompt_bufnr, map)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
