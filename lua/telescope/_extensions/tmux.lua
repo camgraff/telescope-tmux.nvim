@@ -28,7 +28,6 @@ local pane_contents = function(opts)
     local results = {}
     for _, pane in ipairs(panes) do
         local contents = utils.get_os_command_output({'tmux', 'capture-pane', '-p', '-t', pane, '-S', -num_history_lines})
-        --local contents = {"one pane", "two pane", "three pane"}
         for i, line in ipairs(contents) do
             table.insert(results, {pane=pane, line=line, line_num=i})
         end
@@ -61,25 +60,6 @@ local pane_contents = function(opts)
                 return entry.value.pane
             end
         }),
-        --previewer = previewers.new_buffer_previewer({
-            --define_preview = function(self, entry, status)
-                --local pane = entry.value.pane
-                --local line_num = entry.value.line_num
-                --vim.api.nvim_buf_call(self.state.bufnr, function()
-                    --local win_id = self.state.winid
-                    ---- TODO: cache the buffer so we don't recreate buffers when pane_id is the same
-                    ---- set wrap for the terminal output
-                    --vim.api.nvim_win_set_option(win_id, "wrap", true)
-                    --local job_id = vim.fn.termopen(string.format("tmux capture-pane -t \\%s -S %s -eJp", pane, -num_history_lines))
-                    ---- have to wait for the terminal job to complete before adding highlight
-                    --vim.fn.jobwait({job_id})
-                    --pcall(vim.api.nvim_win_set_cursor, win_id, {line_num, 0})
-                    --vim.cmd("norm! zz")
-                    ---- TODO: Have noticed some times where highlight is not getting applied, maybe some issue with line numbers
-                    --vim.api.nvim_buf_add_highlight(self.state.bufnr, ns_previewer, "TelescopePreviewLine", line_num, 0, -1)
-                --end)
-            --end,
-            --}),
         attach_mappings = function(prompt_bufnr)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
@@ -246,7 +226,5 @@ return telescope.register_extension {
         sessions = sessions,
         windows = windows,
         pane_contents = pane_contents,
-        -- TODO: move this to another file
-        display_pane_content_preview = display_pane_content_preview
     }
 }
