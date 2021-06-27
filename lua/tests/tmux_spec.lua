@@ -46,8 +46,7 @@ describe("pane_contents", function()
     local winid = vim.api.nvim_get_current_win()
     local bufid = vim.api.nvim_get_current_buf()
     local utils = mock(require('telescope.utils'), true)
-    -- TODO: change test file name and move to fixtures dir
-    local lines = vim.fn.readfile("test_out")
+    local lines = vim.fn.readfile("lua/tests/fixtures/pane_contents_output.txt")
     utils.get_os_command_output.returns(lines)
 
     tmux.display_pane_content_preview(entry, winid, bufid, {}, 100)
