@@ -8,7 +8,7 @@ local action_state = require('telescope.actions.state')
 local previewers = require('telescope.previewers')
 local transform_mod = require('telescope.actions.mt').transform_mod
 
-local pane_contents_cmd = require'telescope._extensions.tmux.pane_contents'
+local pane_contents = require'telescope._extensions.tmux.pane_contents'
 
 -- TODO: It is better to pass an opts table and allow any additional options for the command
 local function get_sessions(format)
@@ -21,15 +21,17 @@ local function get_windows(opts)
     return sessions
 end
 
-local pane_contents = function(opts)
-    local panes = utils.get_os_command_output({'tmux', 'list-panes', '-a', '-F', '#{pane_id}'})
-    local current_pane = utils.get_os_command_output({'tmux', 'display-message', '-p', '#{pane_id}'})[1]
+local pane_contents_cmd = function(opts)
+    local panes = pane_contents.list_panes()
+    local current_pane = pane_contents.get_current_pane_id()
     local num_history_lines = opts.max_history_lines or 10000
     local results = {}
     for _, pane in ipairs(panes) do
-        local contents = utils.get_os_command_output({'tmux', 'capture-pane', '-p', '-t', pane, '-S', -num_history_lines})
+        local pane_id = pane.id
+        local session = pane.session
+        local contents = utils.get_os_command_output({'tmux', 'capture-pane', '-p', '-t', pane_id, '-S', -num_history_lines})
         for i, line in ipairs(contents) do
-            table.insert(results, {pane=pane, line=line, line_num=i})
+            table.insert(results, {pane=pane_id, session=session, line=line, line_num=i})
         end
     end
 
@@ -44,7 +46,7 @@ local pane_contents = function(opts)
                         line_num = result.line_num,
                     },
                     -- TODO: make the display prefix prettier
-                    display = result.pane .. ":" .. result.line_num .. ": " .. result.line,
+                    display = result.session .. ":" .. result.pane .. " " .. result.line,
                     ordinal = result.line,
                     valid = result.pane ~= current_pane
                 }
@@ -54,7 +56,7 @@ local pane_contents = function(opts)
         -- would prefer to use this when https://github.com/neovim/neovim/issues/14557 is fixed.
         previewer = previewers.new_buffer_previewer({
             define_preview = function(self, entry, status)
-                pane_contents_cmd.define_preview(entry, self.state.winid, self.state.bufnr, num_history_lines)
+                pane_contents.define_preview(entry, self.state.winid, self.state.bufnr, num_history_lines)
             end,
             get_buffer_by_name = function (self, entry)
                 return entry.value.pane
@@ -225,6 +227,6 @@ return telescope.register_extension {
     exports = {
         sessions = sessions,
         windows = windows,
-        pane_contents = pane_contents,
+        pane_contents = pane_contents_cmd,
     }
 }

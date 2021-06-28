@@ -32,4 +32,20 @@ pane_contents.define_preview = function(entry, winid, bufid, num_history_lines)
     vim.api.nvim_win_set_cursor(winid, {line_num, 0})
 end
 
+pane_contents.list_panes = function()
+    local raw_panes =  utils.get_os_command_output({'tmux', 'list-panes', '-a', '-F', '#{pane_id}\t#{session_name}\t'})
+    local panes = {}
+    for _, pane in ipairs(raw_panes) do
+        local it = string.gmatch(pane, "[^\t]*\t")
+        local id = it():sub(1, -2)
+        local session = it():sub(1, -2)
+        table.insert(panes, {id=id, session=session})
+    end
+    return panes
+end
+
+pane_contents.get_current_pane_id = function()
+    return utils.get_os_command_output({'tmux', 'display-message', '-p', '#{pane_id}'})[1]
+end
+
 return pane_contents
