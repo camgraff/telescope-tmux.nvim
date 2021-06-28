@@ -6,9 +6,11 @@ A Telescope.nvim extension for fuzzy-finding over tmux targets.
 
 ## Prerequisites
 
+- [tmux](https://github.com/tmux/tmux)
 - [Neovim nightly](https://github.com/neovim/neovim/releases/tag/nightly)
 - [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
-- [tmux](https://github.com/tmux/tmux)
+- [nvim-terminal.lua](https://github.com/norcalli/nvim-terminal.lua) (for displaying terminal colors in the `pane_contents` previewer)
+
 
 ## Commands
 
