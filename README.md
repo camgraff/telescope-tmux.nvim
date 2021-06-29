@@ -13,16 +13,27 @@ A Telescope.nvim extension for fuzzy-finding over tmux targets.
 ## Commands
 
 ### Sessions
+Switch to another tmux session
 ```
 :Telescope tmux sessions
 ```
 
+|Mapping|Description|Modes|
+|---|---|---|
+|\<C-a\>|Create new session|n,i|
+
 ### Windows
+Switch to another window
 ```
 :Telescope tmux windows
 ```
 
+|Mapping|Description|Modes|
+|---|---|---|
+|\<C-a\>|Create new window|n,i|
+
 ### Pane Contents
+Find something in a pane's history scrollback
 ```
 :Telescope tmux pane_contents
 ```
@@ -36,5 +47,3 @@ Add the following commands to your `.tmux.conf` which override the default tmux 
 bind s display-popup -E -w 80% -h 80% nvim -c ":Telescope tmux sessions quit_on_select=true"
 bind w display-popup -E -w 80% -h 80% nvim -c ":Telescope tmux windows quit_on_select=true"
 ```
-
-Better docs and more features coming so[on?]meday!
