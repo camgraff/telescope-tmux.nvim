@@ -29,10 +29,26 @@ local sessions = function(opts)
     local custom_actions = transform_mod({
         create_new_session = function(prompt_bufnr)
             local new_session = action_state.get_current_line()
-            vim.cmd(string.format("silent !tmux new-session -d -s '%s'", new_session))
-            vim.cmd(string.format("silent !tmux switchc -t '%s' -c %s", new_session, current_client))
+            local new_session_id = tutils.get_os_command_output{"tmux", "new-session", "-dP", "-s", new_session, "-F", "#{session_id}"}[1]
+            tutils.get_os_command_output{"tmux", "switch-client", "-t", new_session_id, "-c", current_client}
             actions.close(prompt_bufnr)
-        end
+        end,
+        delete_session = function(prompt_bufnr)
+            local entry = action_state.get_selected_entry()
+            local session_id = entry.value
+            local session_display = entry.display
+            local confirmation = vim.fn.input("Kill session '" .. session_display .. "'? [Y/n] ")
+            if string.lower(confirmation) ~= 'y' then return end
+            tutils.get_os_command_output{"tmux", "kill-session", "-t", session_id}
+            actions.close(prompt_bufnr)
+        end,
+        rename_session = function(prompt_bufnr)
+            local session = action_state.get_selected_entry().value
+            local new_session_name = vim.fn.input("Enter new session name: ")
+            if string.lower(new_session_name) == '' then return end
+            tutils.get_os_command_output{"tmux", "rename-session", "-t", session, new_session_name}
+            actions.close(prompt_bufnr)
+        end,
     })
 
 
@@ -73,6 +89,10 @@ local sessions = function(opts)
 
             map('i', '<c-a>', custom_actions.create_new_session)
             map('n', '<c-a>', custom_actions.create_new_session)
+            map('i', '<c-d>', custom_actions.delete_session)
+            map('n', '<c-d>', custom_actions.delete_session)
+            map('i', '<c-r>', custom_actions.rename_session)
+            map('n', '<c-r>', custom_actions.rename_session)
 
             return true
         end,

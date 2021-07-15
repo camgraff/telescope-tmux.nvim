@@ -23,16 +23,14 @@ Switch to another tmux session
 |Mapping|Description|Modes|
 |---|---|---|
 |\<C-a\>|Create new session|n,i|
+|\<C-d\>|Delete a session|n,i|
+|\<C-r\>|Rename a session|n,i|
 
 ### Windows
 Switch to another window
 ```
 :Telescope tmux windows
 ```
-
-|Mapping|Description|Modes|
-|---|---|---|
-|\<C-a\>|Create new window|n,i|
 
 ### Pane Contents
 Find something in a pane's history scrollback
