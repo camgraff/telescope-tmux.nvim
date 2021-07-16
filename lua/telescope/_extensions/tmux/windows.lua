@@ -6,45 +6,37 @@ local actions = require('telescope.actions')
 local action_state = require('telescope.actions.state')
 local previewers = require('telescope.previewers')
 local utils = require'telescope._extensions.tmux.utils'
-
--- TODO: Passing entire opts may not be a good idea since -f can change what windows appear in the table
-local function get_windows(opts)
-    local sessions = tutils.get_os_command_output({ 'tmux', 'list-windows', unpack(opts) })
-    return sessions
-end
+local tmux_commands = require'telescope._extensions.tmux.tmux_commands'
 
 local windows = function(opts)
+  local list_windows = tmux_commands.list_windows
     opts = utils.apply_default_layout(opts)
-    -- We have to include the session here since we show the preview by linking a window.
-    -- If we attempt to attach using solely the window id, it is ambiguous because the window is linked
-    -- between the real session and the dummy session used for previewing.
-    local window_ids = get_windows({"-a", '-F', '#S:#{window_id}'})
-    -- TODO: These should be able to be passed by the user
-    local windows_with_user_opts = get_windows({"-a", '-F', '#S: #W'})
 
-    local custom_to_default_map = {}
-    for i, v in ipairs(windows_with_user_opts) do
-        custom_to_default_map[v] = window_ids[i]
+    local window_ids = list_windows({format = tmux_commands.window_id_fmt})
+    -- TODO: These should be able to be passed by the user
+    local display_windows = list_windows({format = '#S: #W'})
+    -- FIXME: This command can display a session name even if you are in a seperate terminal session that isn't using tmux
+    local current_window = tutils.get_os_command_output({'tmux', 'display-message', '-p', tmux_commands.window_id_fmt})[1]
+
+    local entries = {}
+    for i, v in ipairs(display_windows) do
+      local entry = {
+        value = window_ids[i],
+        display = v,
+        ordinal = v,
+        valid = window_ids[i] ~= current_window
+      }
+      table.insert(entries, entry)
     end
 
-    -- FIXME: This command can display a session name even if you are in a seperate terminal session that isn't using tmux
-    local current_window = tutils.get_os_command_output({'tmux', 'display-message', '-p', '#S:#{window_id}'})[1]
     local dummy_session_name = "telescope-tmux-previewer"
-
     local current_client = tutils.get_os_command_output({'tmux', 'display-message', '-p', '#{client_tty}'})[1]
 
     pickers.new(opts, {
         prompt_title = 'Tmux Windows',
         finder = finders.new_table {
-            results = windows_with_user_opts,
-            entry_maker = function(result)
-                return {
-                    value = result,
-                    display = result,
-                    ordinal = result,
-                    valid = custom_to_default_map[result] ~=  current_window
-                }
-            end
+            results = entries,
+            entry_maker = function(res) return res end
         },
         sorter = sorters.get_generic_fuzzy_sorter(),
         previewer = previewers.new_buffer_previewer({
@@ -57,7 +49,7 @@ local windows = function(opts)
                 -- the tmux sessions before the buffer has been set in the window. This is because Telescope
                 -- calls nvim_win_set_buf inside vim.schedule()
                 vim.api.nvim_win_set_buf(self.state.winid, self.state.bufnr)
-                local window_id = custom_to_default_map[entry.value]
+                local window_id = entry.value
                 vim.api.nvim_buf_call(self.state.bufnr, function()
                     -- kil the job running in previous previewer
                     if tutils.job_is_running(self.state.termopen_id) then vim.fn.jobstop(self.state.termopen_id) end
@@ -73,7 +65,7 @@ local windows = function(opts)
         attach_mappings = function(prompt_bufnr)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
-                local selected_window_id = custom_to_default_map[selection.value]
+                local selected_window_id = selection.value
                 vim.cmd(string.format('silent !tmux switchc -t %s -c %s', selected_window_id, current_client))
                 actions.close(prompt_bufnr)
             end)
