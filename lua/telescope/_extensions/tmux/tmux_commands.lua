@@ -2,9 +2,9 @@ local tutils = require('telescope.utils')
 
 local tmux_commands = {}
 
--- Include the session ID since the window may be linked to multiple sessions
+-- Include the session name since the window may be linked to multiple sessions
 -- This format makes the window location unambiguous
-tmux_commands.window_id_fmt = "#{session_id}:#{window_id}"
+tmux_commands.window_id_fmt = "#{session_name}:#{window_id}"
 
 tmux_commands.list_windows = function(opts)
   local cmd = {'tmux', 'list-windows', '-a'}
