@@ -22,15 +22,23 @@ Switch to another tmux session
 
 |Mapping|Description|Modes|
 |---|---|---|
-|\<C-a\>|Create new session|n,i|
-|\<C-d\>|Delete a session|n,i|
-|\<C-r\>|Rename a session|n,i|
+|`<C-a>`|Create new session|n,i|
+|`<C-d>`|Delete a session|n,i|
+|`<C-r>`|Rename a session|n,i|
+
+|Option|Description|Default value|
+|---|---|---|
+|`entry_format`|A [tmux format string](https://man7.org/linux/man-pages/man1/tmux.1.html#FORMATS) used to determine how to display the session entry|`#S`|
 
 ### Windows
 Switch to another window
 ```
 :Telescope tmux windows
 ```
+
+|Option|Description|Default value|
+|---|---|---|
+|`entry_format`|A [tmux format string](https://man7.org/linux/man-pages/man1/tmux.1.html#FORMATS) used to determine how to display the window entry|`#S: #W`|
 
 ### Pane Contents
 Find something in a pane's history scrollback

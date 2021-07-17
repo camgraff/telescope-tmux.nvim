@@ -16,7 +16,7 @@ local sessions = function(opts)
     opts = utils.apply_default_layout(opts)
     -- TODO: Use session IDs instead of names
     local session_names = get_sessions('#S')
-    local user_formatted_session_names = get_sessions(opts.format or '#S')
+    local user_formatted_session_names = get_sessions(opts.entry_format or '#S')
     local formatted_to_real_session_map = {}
     for i, v in ipairs(user_formatted_session_names) do
         formatted_to_real_session_map[v] = session_names[i]

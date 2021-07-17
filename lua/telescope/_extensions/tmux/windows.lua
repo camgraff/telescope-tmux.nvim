@@ -10,75 +10,74 @@ local tmux_commands = require'telescope._extensions.tmux.tmux_commands'
 
 local windows = function(opts)
   local list_windows = tmux_commands.list_windows
-    opts = utils.apply_default_layout(opts)
+  opts = utils.apply_default_layout(opts)
 
-    local window_ids = list_windows({format = tmux_commands.window_id_fmt})
-    -- TODO: These should be able to be passed by the user
-    local display_windows = list_windows({format = '#S: #W'})
-    -- FIXME: This command can display a session name even if you are in a seperate terminal session that isn't using tmux
-    local current_window = tutils.get_os_command_output({'tmux', 'display-message', '-p', tmux_commands.window_id_fmt})[1]
+  local window_ids = list_windows({format = tmux_commands.window_id_fmt})
+  local display_windows = list_windows({format = opts.entry_format or '#S: #W'})
+  -- FIXME: This command can display a session name even if you are in a seperate terminal session that isn't using tmux
+  local current_window = tutils.get_os_command_output({'tmux', 'display-message', '-p', tmux_commands.window_id_fmt})[1]
 
-    local entries = {}
-    for i, v in ipairs(display_windows) do
-      local entry = {
-        value = window_ids[i],
-        display = v,
-        ordinal = v,
-        valid = window_ids[i] ~= current_window
-      }
-      table.insert(entries, entry)
-    end
+  local entries = {}
+  for i, v in ipairs(display_windows) do
+    local entry = {
+      value = window_ids[i],
+      display = v,
+      ordinal = v,
+      valid = window_ids[i] ~= current_window
+    }
+    table.insert(entries, entry)
+  end
 
-    local dummy_session_name = "telescope-tmux-previewer"
-    local current_client = tutils.get_os_command_output({'tmux', 'display-message', '-p', '#{client_tty}'})[1]
+  local dummy_session_name = "telescope-tmux-previewer"
+  local current_client = tutils.get_os_command_output({'tmux', 'display-message', '-p', '#{client_tty}'})[1]
 
-    pickers.new(opts, {
-        prompt_title = 'Tmux Windows',
-        finder = finders.new_table {
-            results = entries,
-            entry_maker = function(res) return res end
-        },
-        sorter = sorters.get_generic_fuzzy_sorter(),
-        previewer = previewers.new_buffer_previewer({
-            setup = function(self)
-                vim.api.nvim_command(string.format("silent !tmux new-session -s %s -d", dummy_session_name))
-                return {}
-            end,
-            define_preview = function(self, entry, status)
-                -- We have to set the window buf manually to avoid a race condition where we try to attach to
-                -- the tmux sessions before the buffer has been set in the window. This is because Telescope
-                -- calls nvim_win_set_buf inside vim.schedule()
-                vim.api.nvim_win_set_buf(self.state.winid, self.state.bufnr)
-                local window_id = entry.value
-                vim.api.nvim_buf_call(self.state.bufnr, function()
-                    -- kil the job running in previous previewer
-                    if tutils.job_is_running(self.state.termopen_id) then vim.fn.jobstop(self.state.termopen_id) end
-                    vim.cmd(string.format("silent !tmux link-window -s %s -t %s:0 -kd", window_id, dummy_session_name))
-                    -- Need -r here to prevent resizing the window which will distort the view on the real client
-                    self.state.termopen_id = vim.fn.termopen(string.format("tmux attach -t %s -r", dummy_session_name))
-                end)
-            end,
-            teardown = function(self)
-                vim.api.nvim_command(string.format("silent !tmux kill-session -t %s", dummy_session_name))
-            end
-        }),
-        attach_mappings = function(prompt_bufnr)
-            actions.select_default:replace(function()
-                local selection = action_state.get_selected_entry()
-                local selected_window_id = selection.value
-                vim.cmd(string.format('silent !tmux switchc -t %s -c %s', selected_window_id, current_client))
-                actions.close(prompt_bufnr)
-            end)
-            actions.close:enhance({
-                post = function ()
-                    if opts.quit_on_select then
-                        vim.cmd('q')
-                    end
-                end
-            })
-            return true
+  pickers.new(opts, {
+    prompt_title = 'Tmux Windows',
+    finder = finders.new_table {
+        results = entries,
+        entry_maker = function(res) return res end
+    },
+    sorter = sorters.get_generic_fuzzy_sorter(),
+    previewer = previewers.new_buffer_previewer({
+      setup = function(self)
+        vim.api.nvim_command(string.format("silent !tmux new-session -s %s -d", dummy_session_name))
+        return {}
+      end,
+      define_preview = function(self, entry, status)
+        -- We have to set the window buf manually to avoid a race condition where we try to attach to
+        -- the tmux sessions before the buffer has been set in the window. This is because Telescope
+        -- calls nvim_win_set_buf inside vim.schedule()
+        vim.api.nvim_win_set_buf(self.state.winid, self.state.bufnr)
+        local window_id = entry.value
+        vim.api.nvim_buf_call(self.state.bufnr, function()
+            -- kil the job running in previous previewer
+            if tutils.job_is_running(self.state.termopen_id) then vim.fn.jobstop(self.state.termopen_id) end
+            vim.cmd(string.format("silent !tmux link-window -s %s -t %s:0 -kd", window_id, dummy_session_name))
+            -- Need -r here to prevent resizing the window which will distort the view on the real client
+            self.state.termopen_id = vim.fn.termopen(string.format("tmux attach -t %s -r", dummy_session_name))
+        end)
+      end,
+      teardown = function(self)
+        vim.api.nvim_command(string.format("silent !tmux kill-session -t %s", dummy_session_name))
+      end
+    }),
+    attach_mappings = function(prompt_bufnr)
+      actions.select_default:replace(function()
+        local selection = action_state.get_selected_entry()
+        local selected_window_id = selection.value
+        vim.cmd(string.format('silent !tmux switchc -t %s -c %s', selected_window_id, current_client))
+        actions.close(prompt_bufnr)
+      end)
+      actions.close:enhance({
+        post = function ()
+          if opts.quit_on_select then
+            vim.cmd('q')
+          end
         end
-    }):find()
+      })
+      return true
+    end
+}):find()
 end
 
 return windows
