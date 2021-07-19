@@ -15,5 +15,15 @@ tmux_commands.list_windows = function(opts)
   return tutils.get_os_command_output(cmd)
 end
 
+tmux_commands.get_base_index_option = function()
+  return tutils.get_os_command_output{'tmux', 'show-options', '-gv', 'base-index'}[1]
+end
+
+tmux_commands.link_window = function(src_window, target_window)
+  local src = src_window  or error("src_window is required")
+  local target = target_window  or error("target_window is required")
+  return tutils.get_os_command_output{'tmux', 'link-window', "-kd", '-s', src, "-t", target}
+end
+
 
 return tmux_commands

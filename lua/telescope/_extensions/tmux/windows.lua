@@ -31,6 +31,8 @@ local windows = function(opts)
   local dummy_session_name = "telescope-tmux-previewer"
   local current_client = tutils.get_os_command_output({'tmux', 'display-message', '-p', '#{client_tty}'})[1]
 
+  local base_index = tmux_commands.get_base_index_option()
+
   pickers.new(opts, {
     prompt_title = 'Tmux Windows',
     finder = finders.new_table {
@@ -52,7 +54,8 @@ local windows = function(opts)
         vim.api.nvim_buf_call(self.state.bufnr, function()
             -- kil the job running in previous previewer
             if tutils.job_is_running(self.state.termopen_id) then vim.fn.jobstop(self.state.termopen_id) end
-            vim.cmd(string.format("silent !tmux link-window -s %s -t %s:0 -kd", window_id, dummy_session_name))
+            local target_window_id = dummy_session_name .. ":" .. base_index
+            tmux_commands.link_window(window_id, target_window_id)
             -- Need -r here to prevent resizing the window which will distort the view on the real client
             self.state.termopen_id = vim.fn.termopen(string.format("tmux attach -t %s -r", dummy_session_name))
         end)
