@@ -57,17 +57,24 @@ local sessions = function(opts)
         finder = finders.new_table {
             results = user_formatted_session_names,
             entry_maker = function(result)
+                local is_valid = function()
+                    if opts.include_current_session == true then
+                        return true
+                    else
+                        return formatted_to_real_session_map[result] ~=  current_session
+                    end
+                end
                 return {
                     value = result,
                     display = result,
                     ordinal = result,
-                    valid = formatted_to_real_session_map[result] ~=  current_session
+                    valid = is_valid(),
                 }
             end
         },
         sorter = sorters.get_generic_fuzzy_sorter(),
         previewer = previewers.new_termopen_previewer({
-            get_command = function(entry, status)
+            get_command = function(entry, _)
                 local session_name = formatted_to_real_session_map[entry.value]
                 return {'tmux', 'attach-session', '-t', session_name, '-r'}
             end
