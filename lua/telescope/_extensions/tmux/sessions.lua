@@ -7,6 +7,7 @@ local action_state = require('telescope.actions.state')
 local previewers = require('telescope.previewers')
 local transform_mod = require('telescope.actions.mt').transform_mod
 local utils = require'telescope._extensions.tmux.utils'
+local tmux_commands = require 'telescope._extensions.tmux.tmux_commands'
 
 local function get_sessions(format)
     return tutils.get_os_command_output({ 'tmux', 'list-sessions', '-F', format })
@@ -14,16 +15,15 @@ end
 
 local sessions = function(opts)
     opts = utils.apply_default_layout(opts)
-    -- TODO: Use session IDs instead of names
-    local session_names = get_sessions('#S')
+    local session_ids = tmux_commands.list_sessions{format = tmux_commands.session_id_fmt}
     local user_formatted_session_names = get_sessions(opts.entry_format or '#S')
     local formatted_to_real_session_map = {}
     for i, v in ipairs(user_formatted_session_names) do
-        formatted_to_real_session_map[v] = session_names[i]
+        formatted_to_real_session_map[v] = session_ids[i]
     end
 
     -- FIXME: This command can display a session name even if you are in a seperate terminal session that isn't using tmux
-    local current_session = tutils.get_os_command_output({'tmux', 'display-message', '-p', '#S'})[1]
+    local current_session = tutils.get_os_command_output({'tmux', 'display-message', '-p', tmux_commands.session_id_fmt})[1]
     local current_client = tutils.get_os_command_output({'tmux', 'display-message', '-p', '#{client_tty}'})[1]
 
     local custom_actions = transform_mod({
