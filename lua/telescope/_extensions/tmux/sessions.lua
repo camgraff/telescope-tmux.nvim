@@ -29,6 +29,8 @@ local sessions = function(opts)
     local custom_actions = transform_mod({
         create_new_session = function(prompt_bufnr)
             local new_session = action_state.get_current_line()
+            local confirmation = vim.fn.input("Create session '" .. new_session .. "'? [Y/n] ")
+            if string.lower(confirmation) ~= 'y' then return end
             local new_session_id = tutils.get_os_command_output{"tmux", "new-session", "-dP", "-s", new_session, "-F", "#{session_id}"}[1]
             tutils.get_os_command_output{"tmux", "switch-client", "-t", new_session_id, "-c", current_client}
             actions.close(prompt_bufnr)
