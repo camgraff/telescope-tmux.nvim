@@ -36,5 +36,9 @@ tmux_commands.link_window = function(src_window, target_window)
   return tutils.get_os_command_output{'tmux', 'link-window', "-kd", '-s', src, "-t", target}
 end
 
+tmux_commands.kill_window = function(target)
+  return tutils.get_os_command_output{"tmux", "kill-window", "-t", target}
+end
+
 
 return tmux_commands

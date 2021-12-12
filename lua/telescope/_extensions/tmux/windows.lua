@@ -3,10 +3,24 @@ local finders = require('telescope.finders')
 local pickers = require('telescope.pickers')
 local sorters = require('telescope.sorters')
 local actions = require('telescope.actions')
+local transform_mod = require('telescope.actions.mt').transform_mod
 local action_state = require('telescope.actions.state')
 local previewers = require('telescope.previewers')
 local utils = require'telescope._extensions.tmux.utils'
 local tmux_commands = require'telescope._extensions.tmux.tmux_commands'
+
+local custom_actions = transform_mod{
+  delete_window = function(prompt_bufnr)
+      local entry = action_state.get_selected_entry()
+      local window_id = entry.value
+      local window_display = entry.display
+      local confirmation = vim.fn.input("Kill window '" .. window_display .. "'? [Y/n] ")
+      if string.lower(confirmation) ~= 'y' then return end
+      tmux_commands.kill_window(window_id)
+      actions.close(prompt_bufnr)
+  end,
+}
+
 
 local windows = function(opts)
   local list_windows = tmux_commands.list_windows
@@ -64,7 +78,7 @@ local windows = function(opts)
         vim.api.nvim_command(string.format("silent !tmux kill-session -t %s", dummy_session_name))
       end
     }),
-    attach_mappings = function(prompt_bufnr)
+    attach_mappings = function(prompt_bufnr, map)
       actions.select_default:replace(function()
         local selection = action_state.get_selected_entry()
         local selected_window_id = selection.value
@@ -78,6 +92,8 @@ local windows = function(opts)
           end
         end
       })
+      map('i', '<c-d>', custom_actions.delete_window)
+      map('n', '<c-d>', custom_actions.delete_window)
       return true
     end
 }):find()
