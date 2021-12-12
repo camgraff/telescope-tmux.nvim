@@ -6,6 +6,7 @@ local tmux_commands = {}
 -- This format makes the window location unambiguous
 tmux_commands.window_id_fmt = "#{session_name}:#{window_id}"
 tmux_commands.session_id_fmt = "#{session_id}"
+tmux_commands.session_name_fmt = "#S"
 
 tmux_commands.list_windows = function(opts)
   local cmd = {'tmux', 'list-windows', '-a'}

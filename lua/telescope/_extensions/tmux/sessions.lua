@@ -9,14 +9,10 @@ local transform_mod = require('telescope.actions.mt').transform_mod
 local utils = require'telescope._extensions.tmux.utils'
 local tmux_commands = require 'telescope._extensions.tmux.tmux_commands'
 
-local function get_sessions(format)
-    return tutils.get_os_command_output({ 'tmux', 'list-sessions', '-F', format })
-end
-
 local sessions = function(opts)
     opts = utils.apply_default_layout(opts)
     local session_ids = tmux_commands.list_sessions{format = tmux_commands.session_id_fmt}
-    local user_formatted_session_names = get_sessions(opts.entry_format or '#S')
+    local user_formatted_session_names = tmux_commands.list_sessions{format = opts.entry_format or tmux_commands.session_name_fmt}
     local formatted_to_real_session_map = {}
     for i, v in ipairs(user_formatted_session_names) do
         formatted_to_real_session_map[v] = session_ids[i]
