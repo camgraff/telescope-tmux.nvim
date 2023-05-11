@@ -82,7 +82,7 @@ local windows = function(opts)
       actions.select_default:replace(function()
         local selection = action_state.get_selected_entry()
         local selected_window_id = selection.value
-        vim.cmd(string.format('silent !tmux switchc -t %s -c %s', selected_window_id, current_client))
+        vim.cmd(string.format('silent !tmux switchc -t "%s" -c "%s"', selected_window_id, current_client))
         actions.close(prompt_bufnr)
       end)
       actions.close:enhance({

@@ -73,7 +73,7 @@ local sessions = function(opts)
         attach_mappings = function(prompt_bufnr, map)
             actions.select_default:replace(function()
                 local selection = action_state.get_selected_entry()
-                vim.cmd(string.format('silent !tmux switchc -t %s -c %s', selection.value, current_client))
+                vim.cmd(string.format('silent !tmux switchc -t "%s" -c "%s"', selection.value, current_client))
                 actions.close(prompt_bufnr)
             end)
 
