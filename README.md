@@ -50,12 +50,24 @@ Find something in a pane's history scrollback
 :Telescope tmux pane_contents
 ```
 
+### Pane File Paths
+Find file paths in pane's history scrollback and open them for editing
+```
+:Telescope tmux pane_file_paths
+```
+
 ## Use with tmux display-popup
 Tmux 3.2's new `display-popup` command is a neat way to access the telescope picker when you are outside of Neovim.
 
 Add the following commands to your `.tmux.conf` which override the default tmux session and window pickers to use telescope.
+
+note: if you use a dashboard you may need to add `tmp.txt` or a filename at the end of the `nvim` commands.
 ```
 # use telescope-tmux for picking sessions and windows 
 bind s display-popup -E -w 80% -h 80% nvim -c ":Telescope tmux sessions quit_on_select=true"
 bind w display-popup -E -w 80% -h 80% nvim -c ":Telescope tmux windows quit_on_select=true"
+# for contents searching
+bind f display-popup -E -w 80% -h 80% nvim -c ":Telescope tmux pane_contents"
+# and for quick file edits
+bind f display-popup -E -w 80% -h 80% nvim -c ":Telescope tmux pane_file_paths"
 ```
