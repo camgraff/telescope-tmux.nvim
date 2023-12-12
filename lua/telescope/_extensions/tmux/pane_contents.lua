@@ -127,7 +127,7 @@ pane_contents.file_paths_cmd = function(opts)
     local num_history_lines = opts.max_history_lines or 10000
     local grep_cmd = opts.grep_cmd or "grep -oP"
     -- regex to find paths and optional "line:col" at the end
-    local regex = opts.regex or "(([.\\w\\-~\\$@]+)?(/?[\\w\\-@]+)+)\\.[a-zA-Z]\\w{0,5}(:\\d*:\\d*)?"
+    local regex = opts.regex or "(([.\\w\\-~\\$@]+)(\\/?[\\w\\-@]+)+\\/?)\\.([\\w]+)(:\\d*:\\d*)?"
     local results = {}
     for _, pane in ipairs(panes) do
         local pane_id = pane.id
