@@ -25,12 +25,12 @@ pane_contents.define_preview = function(entry, winid, bufid, num_history_lines)
         local pane_content =
             utils.get_os_command_output({ "tmux", "capture-pane", "-p", "-t", pane, "-S", -num_history_lines, "-e" })
         --local pane_content = {"one pane", "two pane", "three pane"}
-        vim.api.nvim_win_set_option(winid, "number", false)
-        vim.api.nvim_win_set_option(winid, "relativenumber", false)
-        vim.api.nvim_win_set_option(winid, "wrap", false)
+        vim.api.nvim_win_set_var(winid, "number", false)
+        vim.api.nvim_win_set_var(winid, "relativenumber", false)
+        vim.api.nvim_win_set_var(winid, "wrap", false)
 
         -- TODO: check for nvim-terminal.lua and only include term escape codes if plugin is present
-        vim.api.nvim_buf_set_option(bufid, "filetype", "terminal")
+        vim.api.nvim_buf_set_var(bufid, "filetype", "terminal")
         vim.api.nvim_buf_set_lines(bufid, 0, -1, false, pane_content)
     end
 
